@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # AdPlatform Application Service
+  adplatform-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: adplatform_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - JWT_SECRET=change_me_to_a_random_32_character_secret_key_in_production
+      - DATABASE_URL=postgresql://adplatform_user:adplatform_pass@postgres:5432/adplatform_db
+    volumes:
+      - adplatform_data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - adplatform_net
+
+  # PostgreSQL Database Service
+  postgres:
+    image: postgres:16-alpine
+    container_name: adplatform_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: adplatform_db
+      POSTGRES_USER: adplatform_user
+      POSTGRES_PASSWORD: adplatform_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./schema.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adplatform_user -d adplatform_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - adplatform_net
+
+volumes:
+  adplatform_data:
+    driver: local
+  postgres_data:
+    driver: local
+
+networks:
+  adplatform_net:
+    driver: bridge
