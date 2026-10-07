@@ -138,6 +138,24 @@ export const dbOps = {
     }
   },
 
+  async updateUser(id: string, updates: Partial<User>): Promise<User | null> {
+    try {
+      const results = await db.update(users)
+        .set(updates)
+        .where(eq(users.id, id))
+        .returning();
+      return results[0] || null;
+    } catch (error) {
+      console.warn('[AdPlatform DB Note] Using fallback store for updateUser');
+      const user = memoryStore.users.find(u => u.id === id);
+      if (user) {
+        Object.assign(user, updates);
+        return user;
+      }
+      return null;
+    }
+  },
+
   // Sites
   async getSitesByUserId(userId: string): Promise<Site[]> {
     try {

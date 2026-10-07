@@ -76,6 +76,17 @@ export const api = {
     return request<{ user: User }>('/api/auth/me');
   },
 
+  updateProfile: async (profileData: { email?: string; currentPassword: string; newPassword?: string }) => {
+    const data = await request<{ message: string; user: User; token: string }>('/api/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+    if (data.token) {
+      setToken(data.token);
+    }
+    return data;
+  },
+
   logout: async () => {
     try {
       await request('/api/auth/logout', { method: 'POST' });

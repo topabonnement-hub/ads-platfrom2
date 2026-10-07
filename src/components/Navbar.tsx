@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, LayoutGrid, Globe, Layers, Eye, FileCode2, Cloud, History, LogOut, Sun, Moon, Sparkles } from 'lucide-react';
+import { Shield, LayoutGrid, Globe, Layers, Eye, FileCode2, Cloud, History, Settings, LogOut, Sun, Moon, Sparkles } from 'lucide-react';
 import { User } from '../types';
 import { Language, translations } from '../i18n';
 
@@ -34,6 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'wordpress', label: t.wordpress, icon: FileCode2 },
     { id: 'coolify', label: t.coolify, icon: Cloud },
     { id: 'logs', label: t.auditLogs, icon: History },
+    { id: 'settings', label: t.settings, icon: Settings },
   ];
 
   return (

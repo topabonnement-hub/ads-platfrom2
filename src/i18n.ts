@@ -11,6 +11,7 @@ export const translations = {
     wordpress: 'ربط WordPress',
     coolify: 'النشر على Coolify',
     auditLogs: 'سجل العمليات (Audit Logs)',
+    settings: 'إعدادات الحساب (Profile)',
     backup: 'نسخ احتياطي',
     logout: 'تسجيل الخروج',
     login: 'تسجيل الدخول',
@@ -84,6 +85,16 @@ export const translations = {
     coolifyTitle: 'دليل النشر على Coolify مع PostgreSQL',
     coolifyDesc: 'خطوات مفصلة لنشر AdPlatform على سيرفر VPS ديالك باستعمال لوحة Coolify مع قاعدة بيانات PostgreSQL حقيقية.',
     
+    // Settings / Profile
+    profileTitle: 'تعديل بيانات الحساب وكلمة السر',
+    profileDesc: 'يمكنك تغيير البريد الإلكتروني وكلمة السر الخاصة بلوحة التحكم من هنا.',
+    currentPassword: 'كلمة السر الحالية (مطلوبة لتأكيد التغيير)',
+    newPassword: 'كلمة السر الجديدة (اختياري)',
+    confirmNewPassword: 'تأكيد كلمة السر الجديدة',
+    saveProfileBtn: 'حفظ التغييرات',
+    profileSuccess: 'تم تحديث بيانات الحساب وكلمة السر بنجاح!',
+    passwordsDoNotMatch: 'كلمتا السر غير متطابقتين!',
+
     // General
     actions: 'إجراءات',
     cancel: 'إلغاء',
@@ -93,7 +104,7 @@ export const translations = {
     loading: 'جاري التحميل...',
     success: 'تمت العملية بنجاح',
     error: 'حدث خطأ ما',
-    serverStatus: 'قاعدة بيانات PostgreSQL نشطة',
+    serverStatus: 'النظام نشط',
   },
   en: {
     appName: 'AdPlatform',
@@ -105,6 +116,7 @@ export const translations = {
     wordpress: 'WordPress Bridge',
     coolify: 'Deploy to Coolify',
     auditLogs: 'Audit Logs',
+    settings: 'Profile Settings',
     backup: 'Backup / Export',
     logout: 'Logout',
     login: 'Login',
@@ -178,6 +190,16 @@ export const translations = {
     coolifyTitle: 'Deploy on Coolify with PostgreSQL',
     coolifyDesc: 'Complete guide and configuration to deploy AdPlatform on your own VPS with Coolify and PostgreSQL in 2 minutes.',
     
+    // Settings / Profile
+    profileTitle: 'Account & Password Settings',
+    profileDesc: 'Update your administrator email address and change password securely.',
+    currentPassword: 'Current Password (required to save changes)',
+    newPassword: 'New Password (optional)',
+    confirmNewPassword: 'Confirm New Password',
+    saveProfileBtn: 'Save Profile Changes',
+    profileSuccess: 'Account email and password updated successfully!',
+    passwordsDoNotMatch: 'New passwords do not match!',
+
     // General
     actions: 'Actions',
     cancel: 'Cancel',
@@ -187,6 +209,6 @@ export const translations = {
     loading: 'Loading...',
     success: 'Operation completed successfully',
     error: 'An error occurred',
-    serverStatus: 'PostgreSQL Database Connected',
+    serverStatus: 'System Active',
   }
 };

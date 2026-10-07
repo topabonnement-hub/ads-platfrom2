@@ -48,10 +48,6 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
         <div className="absolute top-0 right-0 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl pointer-events-none" />
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 text-xs font-mono mb-3">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              {t.serverStatus}
-            </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
               {lang === 'ar' ? 'مرحباً بك في منصة AdPlatform' : 'Welcome to AdPlatform'}
             </h1>

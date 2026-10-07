@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
+import { Sidebar } from './components/Sidebar';
 import { AuthModal } from './components/AuthModal';
 import { OverviewTab } from './components/OverviewTab';
 import { SitesTab } from './components/SitesTab';
@@ -8,6 +8,7 @@ import { LiveSandboxTab } from './components/LiveSandboxTab';
 import { WordPressBridgeTab } from './components/WordPressBridgeTab';
 import { CoolifyDeploymentTab } from './components/CoolifyDeploymentTab';
 import { AuditLogsTab } from './components/AuditLogsTab';
+import { SettingsTab } from './components/SettingsTab';
 import { api, getToken } from './api';
 import { User, Site, AdSlot, AnalyticsData, AuditLog } from './types';
 import { Language } from './i18n';
@@ -140,8 +141,8 @@ export default function App() {
 
       {/* Main Authenticated Layout */}
       {user && (
-        <>
-          <Navbar
+        <div className="flex min-h-screen">
+          <Sidebar
             currentTab={currentTab}
             setCurrentTab={setCurrentTab}
             user={user}
@@ -152,84 +153,97 @@ export default function App() {
             setTheme={setTheme}
           />
 
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {currentTab === 'overview' && (
-              <OverviewTab
-                analytics={analytics}
-                sites={sites}
-                slots={slots}
-                onNavigate={setCurrentTab}
-                lang={lang}
-              />
-            )}
+          <div className="flex-1 md:ml-64 rtl:md:ml-0 rtl:md:mr-64 flex flex-col min-h-screen transition-all">
+            <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              {currentTab === 'overview' && (
+                <OverviewTab
+                  analytics={analytics}
+                  sites={sites}
+                  slots={slots}
+                  onNavigate={setCurrentTab}
+                  lang={lang}
+                />
+              )}
 
-            {currentTab === 'sites' && (
-              <SitesTab
-                sites={sites}
-                slots={slots}
-                onRefresh={loadAllData}
-                onNavigateToSlotsForSite={handleNavigateToSlotsForSite}
-                lang={lang}
-              />
-            )}
+              {currentTab === 'sites' && (
+                <SitesTab
+                  sites={sites}
+                  slots={slots}
+                  onRefresh={loadAllData}
+                  onNavigateToSlotsForSite={handleNavigateToSlotsForSite}
+                  lang={lang}
+                />
+              )}
 
-            {currentTab === 'slots' && (
-              <AdSlotsTab
-                slots={slots}
-                sites={sites}
-                selectedSiteId={selectedSiteIdForSlots}
-                setSelectedSiteId={setSelectedSiteIdForSlots}
-                onRefresh={loadAllData}
-                onOpenSandboxForSlot={handleOpenSandboxForSlot}
-                lang={lang}
-              />
-            )}
+              {currentTab === 'slots' && (
+                <AdSlotsTab
+                  slots={slots}
+                  sites={sites}
+                  selectedSiteId={selectedSiteIdForSlots}
+                  setSelectedSiteId={setSelectedSiteIdForSlots}
+                  onRefresh={loadAllData}
+                  onOpenSandboxForSlot={handleOpenSandboxForSlot}
+                  lang={lang}
+                />
+              )}
 
-            {currentTab === 'sandbox' && (
-              <LiveSandboxTab
-                slots={slots}
-                sites={sites}
-                initialSlotId={sandboxSlotId}
-                lang={lang}
-              />
-            )}
+              {currentTab === 'sandbox' && (
+                <LiveSandboxTab
+                  slots={slots}
+                  sites={sites}
+                  initialSlotId={sandboxSlotId}
+                  lang={lang}
+                />
+              )}
 
-            {currentTab === 'wordpress' && (
-              <WordPressBridgeTab
-                sites={sites}
-                slots={slots}
-                lang={lang}
-              />
-            )}
+              {currentTab === 'wordpress' && (
+                <WordPressBridgeTab
+                  sites={sites}
+                  slots={slots}
+                  lang={lang}
+                />
+              )}
 
-            {currentTab === 'coolify' && (
-              <CoolifyDeploymentTab
-                lang={lang}
-              />
-            )}
+              {currentTab === 'coolify' && (
+                <CoolifyDeploymentTab
+                  lang={lang}
+                />
+              )}
 
-            {currentTab === 'logs' && (
-              <AuditLogsTab
-                logs={logs}
-                onRefresh={loadAllData}
-                lang={lang}
-              />
-            )}
-          </main>
+              {currentTab === 'logs' && (
+                <AuditLogsTab
+                  logs={logs}
+                  onRefresh={loadAllData}
+                  lang={lang}
+                />
+              )}
 
-          {/* Footer */}
-          <footer className="border-t border-slate-200 dark:border-slate-900 bg-white/80 dark:bg-slate-950/80 py-6 text-center text-xs text-slate-500 font-mono transition-colors">
-            <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Shield className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
-                <span>AdPlatform v1.0.0 &bull; Open Source Ad Management</span>
+              {currentTab === 'settings' && (
+                <SettingsTab
+                  user={user}
+                  onUpdateUser={(updated) => {
+                    setUser(updated);
+                    loadAllData();
+                  }}
+                  lang={lang}
+                />
+              )}
+            </main>
+
+            {/* Footer */}
+            <footer className="border-t border-slate-200 dark:border-slate-900 bg-white/80 dark:bg-slate-950/80 py-6 text-center text-xs text-slate-500 font-mono transition-colors mt-auto">
+              <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400" />
+                  <span>AdPlatform v1.0.0 &bull; Open Source Ad Management</span>
+                </div>
+                <div>
+                  <span>Released under MIT License &bull; Zero Firebase &bull; Pure Node.js</span>
+                </div>
               </div>
-              <div>
-                <span>Released under MIT License &bull; Zero Firebase &bull; Pure Node.js</span>
-              </div>
-            </div>
-          </footer>
-        </>
+            </footer>
+          </div>
+        </div>
       )}
     </div>
   );

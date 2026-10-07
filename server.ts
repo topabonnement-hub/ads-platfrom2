@@ -418,6 +418,89 @@ app.post('/api/auth/logout', requireAuth, async (req: AuthRequest, res: Response
   return res.json({ message: 'Logged out successfully' });
 });
 
+// Update Profile Settings (Email & Password)
+app.put('/api/auth/profile', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const { email, currentPassword, newPassword } = req.body;
+    const currentUser = req.user!;
+
+    if (!currentPassword || typeof currentPassword !== 'string') {
+      return res.status(400).json({ error: 'Current password is required to save changes.' });
+    }
+
+    // Verify current password
+    const isMatch = await comparePassword(currentPassword, currentUser.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Current password is incorrect.' });
+    }
+
+    const updates: Partial<User> = {};
+
+    // Process Email update
+    if (email && typeof email === 'string' && email.trim().toLowerCase() !== currentUser.email) {
+      const cleanEmail = email.trim().toLowerCase();
+      if (!isValidEmail(cleanEmail)) {
+        return res.status(400).json({ error: 'Please enter a valid email address.' });
+      }
+
+      const existing = await dbOps.findUserByEmail(cleanEmail);
+      if (existing && existing.id !== currentUser.id) {
+        return res.status(409).json({ error: 'This email address is already in use by another account.' });
+      }
+
+      updates.email = cleanEmail;
+    }
+
+    // Process Password update
+    if (newPassword && typeof newPassword === 'string' && newPassword.length > 0) {
+      if (newPassword.length < 8) {
+        return res.status(400).json({ error: 'New password must be at least 8 characters long.' });
+      }
+      if (newPassword.length > 128) {
+        return res.status(400).json({ error: 'New password exceeds maximum length.' });
+      }
+
+      updates.passwordHash = await hashPassword(newPassword);
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No profile changes provided.' });
+    }
+
+    const updatedUser = await dbOps.updateUser(currentUser.id, updates);
+    if (!updatedUser) {
+      return res.status(500).json({ error: 'Failed to update user profile.' });
+    }
+
+    const ip = getClientIp(req);
+    await dbOps.addAuditLog({
+      id: 'log_' + crypto.randomBytes(6).toString('hex'),
+      userId: updatedUser.id,
+      userEmail: updatedUser.email,
+      action: 'USER_PROFILE_UPDATED',
+      details: `Profile updated: ${updates.email ? 'Email changed to ' + updates.email : ''}${updates.passwordHash ? ' Password updated' : ''}`,
+      ip,
+      timestamp: new Date(),
+    });
+
+    const token = generateToken(updatedUser);
+    res.cookie('adplatform_token', token, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    return res.json({
+      message: 'Profile updated successfully',
+      user: { id: updatedUser.id, email: updatedUser.email, role: updatedUser.role },
+      token,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to update profile settings.' });
+  }
+});
+
 // ----------------------------------------------------
 // SITES MANAGEMENT APIs (Protected)
 // ----------------------------------------------------
