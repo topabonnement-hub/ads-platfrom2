@@ -331,7 +331,36 @@ export const dbOps = {
       if (existingUsers.length > 0) {
         return; // Already initialized
       }
-      console.log('[AdPlatform] Fresh database ready for user registration.');
+
+      console.log('[AdPlatform] Initializing admin user in PostgreSQL...');
+      const adminId = 'usr_' + crypto.randomBytes(6).toString('hex');
+      
+      // Hash password for default admin123
+      const { hashPassword } = await import('../../server/auth.ts');
+      const passwordHash = await hashPassword('admin123');
+
+      const adminUser: NewUser = {
+        id: adminId,
+        email: 'admin@adplatform.local',
+        passwordHash,
+        role: 'admin',
+        createdAt: new Date(),
+      };
+      await db.insert(users).values(adminUser);
+
+      const siteId = 'site_' + crypto.randomBytes(6).toString('hex');
+      const sampleSite: NewSite = {
+        id: siteId,
+        userId: adminId,
+        name: 'My News Blog (WordPress)',
+        domain: 'example-news.com',
+        publicKey: 'pk_' + crypto.randomBytes(12).toString('hex'),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await db.insert(sites).values(sampleSite);
+
+      console.log('[AdPlatform] Default admin user created: admin@adplatform.local / admin123');
     } catch (error) {
       console.error('Error during database check:', error);
     }

@@ -11,7 +11,6 @@ interface AuthModalProps {
 
 export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, lang }) => {
   const t = translations[lang];
-  const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -23,13 +22,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, lang }) => {
     setLoading(true);
 
     try {
-      if (isRegister) {
-        const res = await api.register(email, password);
-        onSuccess(res.user);
-      } else {
-        const res = await api.login(email, password);
-        onSuccess(res.user);
-      }
+      const res = await api.login(email, password);
+      onSuccess(res.user);
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
     } finally {
@@ -74,7 +68,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, lang }) => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@example.com"
+                placeholder="admin@adplatform.local"
                 className="w-full pl-10 pr-3.5 rtl:pr-10 rtl:pl-3.5 py-2.5 bg-slate-50 dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700/80 rounded-xl text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 transition-all"
               />
             </div>
@@ -104,26 +98,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess, lang }) => {
               <span>{t.loading}</span>
             ) : (
               <>
-                <span>{isRegister ? t.signUpBtn : t.signInBtn}</span>
+                <span>{t.signInBtn}</span>
                 <ArrowRight className="w-4 h-4 rtl:rotate-180" />
               </>
             )}
           </button>
         </form>
-
-        {/* Switch Login / Register */}
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              setIsRegister(!isRegister);
-              setError(null);
-            }}
-            className="text-xs text-sky-600 dark:text-sky-400 hover:text-sky-500 dark:hover:text-sky-300 font-semibold transition-colors"
-          >
-            {isRegister ? t.hasAccount : t.noAccount}
-          </button>
-        </div>
       </div>
     </div>
   );

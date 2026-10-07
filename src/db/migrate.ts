@@ -1,9 +1,26 @@
-import { Pool } from 'pg';
 import { createPool } from './index.ts';
 
 export async function runAutoMigrations() {
   const pool = createPool();
-  
+
+  try {
+    // Check if tables already exist
+    const checkRes = await pool.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' AND table_name = 'users'
+      LIMIT 1;
+    `);
+
+    if (checkRes.rows && checkRes.rows.length > 0) {
+      console.log('[AdPlatform] PostgreSQL database tables already verified.');
+      return;
+    }
+  } catch (checkErr: any) {
+    // If checking information_schema fails or is restricted, proceed carefully to create statements
+    console.warn('[AdPlatform] Table check query note:', checkErr.message || checkErr);
+  }
+
   const migrationSql = `
     -- Users Table
     CREATE TABLE IF NOT EXISTS users (
@@ -87,7 +104,11 @@ export async function runAutoMigrations() {
   try {
     await pool.query(migrationSql);
     console.log('[AdPlatform] PostgreSQL schema verified & auto-migrated successfully.');
-  } catch (error) {
-    console.error('[AdPlatform] Migration check note:', error);
+  } catch (error: any) {
+    if (error && error.code === '42501') {
+      console.warn('[AdPlatform] DDL migration skipped due to schema permissions (using pre-provisioned schema).');
+    } else {
+      console.warn('[AdPlatform] Migration check note:', error.message || error);
+    }
   }
 }

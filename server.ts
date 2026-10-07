@@ -92,6 +92,54 @@ function isSafeUrl(urlStr: string): boolean {
 
 const publicCors = cors({ origin: '*' });
 
+// ----------------------------------------------------
+// SYSTEM HEALTH CHECK & FAVICON APIs
+// ----------------------------------------------------
+
+const startTime = Date.now();
+
+app.get(['/api/health', '/health', '/healthz'], publicCors, async (_req: Request, res: Response) => {
+  let dbStatus = 'healthy';
+  let dbLatencyMs = 0;
+
+  try {
+    const startDb = Date.now();
+    const { createPool } = await import('./src/db/index.ts');
+    await createPool().query('SELECT 1');
+    dbLatencyMs = Date.now() - startDb;
+  } catch (err: any) {
+    dbStatus = 'unreachable';
+  }
+
+  const isHealthy = dbStatus === 'healthy';
+  const responseData = {
+    status: isHealthy ? 'ok' : 'degraded',
+    version: '1.0.0',
+    uptimeSeconds: Math.floor((Date.now() - startTime) / 1000),
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    database: {
+      status: dbStatus,
+      latencyMs: dbLatencyMs,
+    },
+  };
+
+  return res.status(isHealthy ? 200 : 503).json(responseData);
+});
+
+// Serve favicon.svg and favicon.ico
+app.get('/favicon.svg', (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(path.resolve(process.cwd(), 'public/favicon.svg'));
+});
+
+app.get('/favicon.ico', (_req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.sendFile(path.resolve(process.cwd(), 'public/favicon.svg'));
+});
+
 // Direct download / access for WordPress Plugin
 app.get('/wp-kads-bridge.php', publicCors, (_req: Request, res: Response) => {
   const filePath = path.resolve(process.cwd(), 'public/wp-kads-bridge.php');
@@ -286,68 +334,9 @@ app.post('/api/v1/track/click', publicCors, publicTrackLimiter, async (req: Requ
 // AUTHENTICATION APIs
 // ----------------------------------------------------
 
-// Register
-app.post('/api/auth/register', authRateLimiter, async (req: Request, res: Response) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
-      return res.status(400).json({ error: 'Valid email and password are required' });
-    }
-
-    const cleanEmail = email.trim().toLowerCase();
-    if (!isValidEmail(cleanEmail)) {
-      return res.status(400).json({ error: 'Please provide a valid email address format' });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters long' });
-    }
-
-    if (password.length > 128) {
-      return res.status(400).json({ error: 'Password exceeds maximum length limit' });
-    }
-
-    const existing = await dbOps.findUserByEmail(cleanEmail);
-    if (existing) {
-      return res.status(409).json({ error: 'An account with this email address already exists' });
-    }
-
-    const passwordHash = await hashPassword(password);
-    const newUser = await dbOps.createUser({
-      id: 'usr_' + crypto.randomBytes(6).toString('hex'),
-      email: cleanEmail,
-      passwordHash,
-      role: 'admin',
-      createdAt: new Date(),
-    });
-
-    const ip = getClientIp(req);
-    await dbOps.addAuditLog({
-      id: 'log_' + crypto.randomBytes(6).toString('hex'),
-      userId: newUser.id,
-      userEmail: newUser.email,
-      action: 'USER_REGISTER',
-      details: `Admin user registered: ${newUser.email}`,
-      ip,
-      timestamp: new Date(),
-    });
-
-    const token = generateToken(newUser);
-    res.cookie('adplatform_token', token, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    return res.status(201).json({
-      user: { id: newUser.id, email: newUser.email, role: newUser.role },
-      token,
-    });
-  } catch (error) {
-    return res.status(500).json({ error: 'Registration failed. Please try again.' });
-  }
+// Register (Disabled - Only Sign In allowed)
+app.post('/api/auth/register', authRateLimiter, (_req: Request, res: Response) => {
+  return res.status(403).json({ error: 'Public sign up is disabled. Please log in with your admin credentials.' });
 });
 
 // Login
@@ -775,6 +764,7 @@ app.get('/api/export', requireAuth, async (req: AuthRequest, res: Response) => {
 async function startServer() {
   try {
     await runAutoMigrations();
+    await dbOps.seedInitialDataIfEmpty();
   } catch (err) {
     console.error('[AdPlatform] Database init / migration check:', err);
   }
