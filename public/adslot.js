@@ -24,9 +24,13 @@
 
   var defaultEndpoint = '';
   if (scriptTag && scriptTag.src) {
-    var parser = document.createElement('a');
-    parser.href = scriptTag.src;
-    defaultEndpoint = parser.protocol + '//' + parser.host;
+    try {
+      var parser = document.createElement('a');
+      parser.href = scriptTag.src;
+      defaultEndpoint = parser.protocol + '//' + parser.host;
+    } catch (e) {
+      defaultEndpoint = window.location.origin;
+    }
   } else {
     defaultEndpoint = window.location.origin;
   }
@@ -35,6 +39,12 @@
 
   var renderedSlots = new WeakSet();
   var observedSlots = new WeakSet();
+
+  function isSafeLink(url) {
+    if (!url || typeof url !== 'string') return false;
+    var trimmed = url.trim().toLowerCase();
+    return trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('/');
+  }
 
   /**
    * Safe JSON fetch utility
@@ -71,13 +81,14 @@
    * Track Impression via Beacon or XHR
    */
   function trackImpression(slotId, siteId) {
+    if (!slotId) return;
     var host = window.__AdPlatform_Host || defaultEndpoint;
     var url = host + '/api/v1/track/impression';
     var payload = JSON.stringify({
-      slotId: slotId,
-      siteId: siteId,
+      slotId: String(slotId).slice(0, 64),
+      siteId: siteId ? String(siteId).slice(0, 64) : undefined,
       timestamp: new Date().toISOString(),
-      referer: window.location.href,
+      referer: window.location.href.slice(0, 500),
     });
 
     if (navigator.sendBeacon) {
@@ -95,13 +106,16 @@
    * Track Click
    */
   function trackClick(slotId, siteId, targetUrl) {
+    if (!slotId) return;
     var host = window.__AdPlatform_Host || defaultEndpoint;
     var url = host + '/api/v1/track/click';
+    var safeTarget = (targetUrl && isSafeLink(targetUrl)) ? targetUrl.slice(0, 1000) : '';
+
     var payload = JSON.stringify({
-      slotId: slotId,
-      siteId: siteId,
-      targetUrl: targetUrl,
-      referer: window.location.href,
+      slotId: String(slotId).slice(0, 64),
+      siteId: siteId ? String(siteId).slice(0, 64) : undefined,
+      targetUrl: safeTarget,
+      referer: window.location.href.slice(0, 500),
     });
 
     if (navigator.sendBeacon) {
@@ -163,7 +177,7 @@
 
       observer.observe(element);
     } else {
-      // Fallback: immediate tracking
+      // Fallback: delay tracking
       setTimeout(function() {
         trackImpression(slotId, siteId);
       }, 1000);
@@ -240,7 +254,7 @@
         try {
           (window.adsbygoogle = window.adsbygoogle || []).push({});
         } catch (e) {
-          // AdSense queue error
+          // AdSense queue handled
         }
 
         setupImpressionObserver(el, slot.id, slot.siteId);
@@ -252,7 +266,7 @@
         el.addEventListener('click', function(e) {
           var target = e.target;
           var anchor = target.closest ? target.closest('a') : null;
-          if (anchor) {
+          if (anchor && anchor.href && isSafeLink(anchor.href)) {
             trackClick(slot.id, slot.siteId, anchor.href);
           }
         });
@@ -268,7 +282,7 @@
             script.textContent = jsCode;
             el.appendChild(script);
           } catch (e) {
-            console.error('[AdPlatform] Custom JS Error:', e);
+            console.error('[AdPlatform] Custom JS execution error:', e);
           }
         }
         setupImpressionObserver(el, slot.id, slot.siteId);

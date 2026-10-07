@@ -3,7 +3,7 @@ export type Language = 'ar' | 'en';
 export const translations = {
   ar: {
     appName: 'AdPlatform',
-    tagline: 'نظام إدارة الإعلانات — بديل WP Kads بدون Firebase مع دعم كامل لـ PostgreSQL',
+    tagline: 'منصة إدارة وتوزيع الإعلانات',
     dashboard: 'لوحة التحكم',
     sites: 'المواقع',
     adSlots: 'الإعلانات (Slots)',
@@ -19,7 +19,6 @@ export const translations = {
     password: 'كلمة السر',
     signInBtn: 'دخول للوحة التحكم',
     signUpBtn: 'إنشاء حساب مدير',
-    useDemoCreds: 'استخدام حساب تجريبي سريع (admin123)',
     noAccount: 'ما عندكش حساب؟ سجل دابا',
     hasAccount: 'عندك حساب؟ دخل من هنا',
     
@@ -95,11 +94,10 @@ export const translations = {
     success: 'تمت العملية بنجاح',
     error: 'حدث خطأ ما',
     serverStatus: 'قاعدة بيانات PostgreSQL نشطة',
-    noGoogleSdk: '100% نظيف: بدون Firebase أو SDKs خارجية',
   },
   en: {
     appName: 'AdPlatform',
-    tagline: 'Ad server & WordPress WP Kads replacement with native PostgreSQL database',
+    tagline: 'Ad Management Platform',
     dashboard: 'Dashboard',
     sites: 'Sites',
     adSlots: 'Ad Slots',
@@ -115,7 +113,6 @@ export const translations = {
     password: 'Password',
     signInBtn: 'Sign In to Dashboard',
     signUpBtn: 'Create Admin Account',
-    useDemoCreds: 'Use Quick Demo Credentials (admin123)',
     noAccount: "Don't have an account? Sign up",
     hasAccount: 'Already have an account? Sign in',
     
@@ -191,6 +188,5 @@ export const translations = {
     success: 'Operation completed successfully',
     error: 'An error occurred',
     serverStatus: 'PostgreSQL Database Connected',
-    noGoogleSdk: '100% Clean: Zero Firebase or 3rd-party SDKs',
   }
 };

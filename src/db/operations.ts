@@ -324,129 +324,16 @@ export const dbOps = {
     }
   },
 
-  // Seed Initial Admin and Sample Data in PostgreSQL if database is fresh
+  // Seed Initial Configuration in PostgreSQL if database is fresh
   async seedInitialDataIfEmpty() {
     try {
       const existingUsers = await db.select().from(users).limit(1);
       if (existingUsers.length > 0) {
         return; // Already initialized
       }
-
-      console.log('[AdPlatform] Seeding initial admin and sample data in PostgreSQL...');
-      const adminId = 'usr_' + crypto.randomBytes(6).toString('hex');
-      const adminUser: NewUser = {
-        id: adminId,
-        email: 'admin@adplatform.local',
-        passwordHash: '$2a$10$Q7y0eGkYlV5Bv/X9H2w/I.YJv7qV0p3wU1F0bF5i3Y4y9L8Hh0FpB',
-        role: 'admin',
-        createdAt: new Date(),
-      };
-      await db.insert(users).values(adminUser);
-
-      const siteId = 'site_' + crypto.randomBytes(6).toString('hex');
-      const sampleSite: NewSite = {
-        id: siteId,
-        userId: adminId,
-        name: 'My News Blog (WordPress)',
-        domain: 'example-news.com',
-        publicKey: 'pk_' + crypto.randomBytes(12).toString('hex'),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      await db.insert(sites).values(sampleSite);
-
-      const sampleSlots: NewAdSlot[] = [
-        {
-          id: 'slot_' + crypto.randomBytes(6).toString('hex'),
-          siteId: siteId,
-          userId: adminId,
-          name: 'Header Leaderboard (AdSense)',
-          type: 'adsense',
-          legacyId: '1',
-          dimensions: '728x90',
-          config: {
-            adsenseClientId: 'ca-pub-1234567890123456',
-            adsenseSlotId: '9876543210',
-            adsenseFormat: 'horizontal',
-            responsive: true,
-          },
-          isActive: true,
-          impressionsCount: 245,
-          clicksCount: 14,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: 'slot_' + crypto.randomBytes(6).toString('hex'),
-          siteId: siteId,
-          userId: adminId,
-          name: 'Sidebar Banner (HTML)',
-          type: 'html',
-          legacyId: '2',
-          dimensions: '300x250',
-          config: {
-            htmlContent: `<div style="display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg, #1e293b, #0f172a); border:1px solid #334155; border-radius:12px; padding:20px; text-align:center; color:#fff; font-family:sans-serif; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-  <span style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:#94a3b8; margin-bottom:6px;">Sponsored</span>
-  <h3 style="margin:0 0 8px 0; font-size:18px; font-weight:700; color:#38bdf8;">Premium Web Hosting</h3>
-  <p style="margin:0 0 14px 0; font-size:13px; color:#cbd5e1; line-height:1.4;">Ultra-fast SSD servers with 99.9% uptime guarantee.</p>
-  <a href="https://example.com/hosting-offer" target="_blank" rel="noopener noreferrer" style="display:inline-block; background:#0284c7; color:#ffffff; padding:8px 18px; border-radius:8px; font-size:13px; font-weight:600; text-decoration:none;">Claim 60% Off &rarr;</a>
-</div>`,
-          },
-          isActive: true,
-          impressionsCount: 412,
-          clicksCount: 38,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-        {
-          id: 'slot_' + crypto.randomBytes(6).toString('hex'),
-          siteId: siteId,
-          userId: adminId,
-          name: 'Article Footer Interactive (JS)',
-          type: 'custom_js',
-          legacyId: '3',
-          dimensions: 'responsive',
-          config: {
-            jsCode: `// Custom Interactive Ad Script
-(function(container) {
-  if (!container) return;
-  var card = document.createElement('div');
-  card.style.padding = '16px';
-  card.style.background = '#0f172a';
-  card.style.border = '1px solid #10b981';
-  card.style.borderRadius = '10px';
-  card.style.color = '#e2e8f0';
-  card.style.fontFamily = 'system-ui, sans-serif';
-  card.style.textAlign = 'center';
-  card.innerHTML = '<strong style="color:#10b981; font-size:16px;">⚡ Special Promotion:</strong> <span style="margin:0 8px;">Exclusive Developer Toolkit 2026</span> <a href="#" style="color:#38bdf8; text-decoration:underline; font-weight:600;">Learn More</a>';
-  container.appendChild(card);
-})(document.currentScript ? document.currentScript.parentElement : (window.__ad_target_el || document.body));`,
-          },
-          isActive: true,
-          impressionsCount: 189,
-          clicksCount: 9,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ];
-
-      for (const slot of sampleSlots) {
-        await db.insert(adSlots).values(slot);
-      }
-
-      await db.insert(auditLogs).values({
-        id: 'log_' + crypto.randomBytes(6).toString('hex'),
-        userId: adminId,
-        userEmail: adminUser.email,
-        action: 'SYSTEM_INIT',
-        details: 'AdPlatform PostgreSQL database initialized with initial configuration.',
-        ip: '127.0.0.1',
-        timestamp: new Date(),
-      });
-
-      console.log('[AdPlatform] PostgreSQL seeding complete.');
+      console.log('[AdPlatform] Fresh database ready for user registration.');
     } catch (error) {
-      console.error('Error seeding PostgreSQL initial data:', error);
+      console.error('Error during database check:', error);
     }
   },
 };

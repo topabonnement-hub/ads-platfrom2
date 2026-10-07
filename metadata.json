@@ -1,6 +1,6 @@
 {
   "name": "AdPlatform",
-  "description": "Secure advertisement management system and WordPress WP Kads replacement.",
+  "description": "Secure advertisement management and delivery platform.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

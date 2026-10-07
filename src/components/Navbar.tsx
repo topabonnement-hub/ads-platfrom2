@@ -58,7 +58,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono hidden sm:block">
-                WP Kads Alternative • Zero Firebase
+                Ad Management Platform
               </p>
             </div>
           </div>

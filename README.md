@@ -1,6 +1,6 @@
 # AdPlatform 🚀
 > **نظام إدارة وتوزيع إعلانات مفتوح المصدر وخفيف، بديل لـ WP Kads مع دعم كامل لـ PostgreSQL والنشر على Coolify.**
-> **High-performance ad management system & WordPress WP Kads replacement with native PostgreSQL database and Coolify deployment.**
+> **High-performance ad management and delivery platform with native PostgreSQL database and Coolify deployment.**
 
 ---
 
@@ -83,10 +83,6 @@ docker compose up -d
 # 3. Open Admin Dashboard
 http://localhost:3000
 ```
-
-Default Admin Credentials:
-- **Email**: `admin@adplatform.local`
-- **Password**: `admin123`
 
 ---
 
