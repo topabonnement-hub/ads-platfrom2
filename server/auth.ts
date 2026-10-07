@@ -80,6 +80,10 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
       return res.status(401).json({ error: 'User not found. Invalid session.' });
     }
 
+    if (user.isBanned) {
+      return res.status(403).json({ error: 'Your account has been banned by an administrator.' });
+    }
+
     req.user = user;
     next();
   } catch (err: any) {
@@ -88,4 +92,11 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
     }
     return res.status(401).json({ error: 'Invalid authentication token.' });
   }
+}
+
+export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
+  }
+  next();
 }

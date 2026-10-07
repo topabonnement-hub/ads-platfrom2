@@ -6,7 +6,8 @@ import { SitesTab } from './components/SitesTab';
 import { AdSlotsTab } from './components/AdSlotsTab';
 import { LiveSandboxTab } from './components/LiveSandboxTab';
 import { WordPressBridgeTab } from './components/WordPressBridgeTab';
-import { CoolifyDeploymentTab } from './components/CoolifyDeploymentTab';
+import { TrafficControlTab } from './components/TrafficControlTab';
+import { UsersTab } from './components/UsersTab';
 import { AuditLogsTab } from './components/AuditLogsTab';
 import { SettingsTab } from './components/SettingsTab';
 import { api, getToken } from './api';
@@ -204,13 +205,20 @@ export default function App() {
                 />
               )}
 
-              {currentTab === 'coolify' && (
-                <CoolifyDeploymentTab
+              {currentTab === 'users' && user.role === 'admin' && (
+                <UsersTab
+                  currentUser={user}
                   lang={lang}
                 />
               )}
 
-              {currentTab === 'logs' && (
+              {currentTab === 'traffic' && user.role === 'admin' && (
+                <TrafficControlTab
+                  lang={lang}
+                />
+              )}
+
+              {currentTab === 'logs' && user.role === 'admin' && (
                 <AuditLogsTab
                   logs={logs}
                   onRefresh={loadAllData}

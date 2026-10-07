@@ -45,6 +45,10 @@ export interface User {
   id: string;
   email: string;
   role: 'admin' | 'user';
+  isBanned?: boolean;
+  createdAt?: string;
+  sitesCount?: number;
+  slotsCount?: number;
 }
 
 export interface AuditLog {

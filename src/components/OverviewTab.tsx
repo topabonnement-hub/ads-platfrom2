@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, Layers, Eye, MousePointerClick, TrendingUp, Sparkles, CheckCircle2, ArrowUpRight, Copy, Check, Plus } from 'lucide-react';
+import { Globe, Layers, Eye, MousePointerClick, TrendingUp, Sparkles, CheckCircle2, ArrowUpRight, Copy, Check, Plus, Download, FileSpreadsheet } from 'lucide-react';
 import { AnalyticsData, Site, AdSlot } from '../types';
 import { Language, translations } from '../i18n';
 
@@ -33,6 +33,89 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   const totalClicks = analytics?.totalClicks ?? slots.reduce((a, b) => a + (b.clicksCount || 0), 0);
   const ctr = analytics?.ctr ?? (totalImpressions > 0 ? ((totalClicks / totalImpressions) * 100).toFixed(2) + '%' : '0.00%');
 
+  const exportAnalyticsToCSV = () => {
+    const lines: string[] = [];
+
+    const escapeCsv = (val: any) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    // Summary Section
+    lines.push('# ADPLATFORM ANALYTICS REPORT');
+    lines.push(`Export Date,${escapeCsv(new Date().toISOString())}`);
+    lines.push(`Total Sites,${totalSites}`);
+    lines.push(`Total Ad Slots,${totalSlots}`);
+    lines.push(`Total Impressions,${totalImpressions}`);
+    lines.push(`Total Clicks,${totalClicks}`);
+    lines.push(`Overall CTR,${escapeCsv(ctr)}`);
+    lines.push('');
+
+    // Websites Section
+    lines.push('# WEBSITES PERFORMANCE SUMMARY');
+    lines.push('Site Name,Domain,Public Key,Ad Slots Count,Impressions,Clicks,CTR');
+    sites.forEach((site) => {
+      const siteSlots = slots.filter((s) => s.siteId === site.id);
+      const imps = siteSlots.reduce((sum, s) => sum + (s.impressionsCount || 0), 0);
+      const clks = siteSlots.reduce((sum, s) => sum + (s.clicksCount || 0), 0);
+      const siteCtr = imps > 0 ? ((clks / imps) * 100).toFixed(2) + '%' : '0.00%';
+      lines.push([
+        escapeCsv(site.name),
+        escapeCsv(site.domain),
+        escapeCsv(site.publicKey),
+        siteSlots.length,
+        imps,
+        clks,
+        escapeCsv(siteCtr)
+      ].join(','));
+    });
+    lines.push('');
+
+    // Ad Slots Section
+    lines.push('# AD SLOTS PERFORMANCE');
+    lines.push('Slot ID,Slot Name,Target Site,Ad Type,Dimensions,Impressions,Clicks,CTR,Status');
+    slots.forEach((slot) => {
+      const parentSite = sites.find((s) => s.id === slot.siteId);
+      const slotImps = slot.impressionsCount || 0;
+      const slotClks = slot.clicksCount || 0;
+      const slotCtr = slotImps > 0 ? ((slotClks / slotImps) * 100).toFixed(2) + '%' : '0.00%';
+      lines.push([
+        escapeCsv(slot.id),
+        escapeCsv(slot.name),
+        escapeCsv(parentSite ? parentSite.name : slot.siteId),
+        escapeCsv(slot.type),
+        escapeCsv(slot.dimensions),
+        slotImps,
+        slotClks,
+        escapeCsv(slotCtr),
+        escapeCsv(slot.isActive ? 'Active' : 'Paused')
+      ].join(','));
+    });
+    lines.push('');
+
+    // Trend Analytics Section
+    if (analytics?.trend && analytics.trend.length > 0) {
+      lines.push('# DAILY IMPRESSIONS TREND');
+      lines.push('Date,Impressions');
+      analytics.trend.forEach((tr) => {
+        lines.push(`${escapeCsv(tr.date)},${tr.impressions}`);
+      });
+    }
+
+    const csvContent = lines.join('\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.href = url;
+    link.setAttribute('download', `adplatform_analytics_report_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const stats = [
     { label: t.totalSites, value: totalSites, icon: Globe, color: 'from-sky-500 to-blue-600', shadow: 'shadow-sky-500/20' },
     { label: t.totalSlots, value: totalSlots, icon: Layers, color: 'from-indigo-500 to-violet-600', shadow: 'shadow-indigo-500/20' },
@@ -56,17 +139,25 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={exportAnalyticsToCSV}
+              className="px-3.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all"
+              title={lang === 'ar' ? 'تصدير التقارير إلى ملف CSV' : 'Export Analytics Report to CSV'}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>{lang === 'ar' ? 'تصدير تقرير CSV' : 'Export CSV Report'}</span>
+            </button>
             <button
               onClick={() => onNavigate('sites')}
-              className="px-4 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-sky-600/20 flex items-center gap-2 transition-all"
+              className="px-3.5 py-2.5 bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold rounded-xl shadow-md shadow-sky-600/20 flex items-center gap-2 transition-all"
             >
               <Plus className="w-4 h-4" />
               <span>{t.addNewSite}</span>
             </button>
             <button
               onClick={() => onNavigate('slots')}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-xl flex items-center gap-2 transition-all"
+              className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-xl flex items-center gap-2 transition-all"
             >
               <Plus className="w-4 h-4" />
               <span>{t.addNewSlot}</span>

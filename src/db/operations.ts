@@ -119,22 +119,72 @@ export const dbOps = {
     }
   },
 
+  async countUsers(): Promise<number> {
+    try {
+      const results = await db.select({ count: sql<number>`count(*)` }).from(users);
+      return Number(results[0]?.count || 0);
+    } catch {
+      return memoryStore.users.length;
+    }
+  },
+
   async createUser(user: NewUser): Promise<User> {
+    const userCount = await this.countUsers();
+    // First user gets admin role automatically, subsequent users get 'user' role by default
+    const assignedRole = user.role || (userCount === 0 ? 'admin' : 'user');
+
     const newUserRecord: User = {
       id: user.id || 'usr_' + crypto.randomBytes(6).toString('hex'),
       email: user.email.toLowerCase().trim(),
       passwordHash: user.passwordHash,
-      role: user.role || 'admin',
+      role: assignedRole,
+      isBanned: user.isBanned || false,
       createdAt: user.createdAt || new Date(),
     };
 
     try {
-      const results = await db.insert(users).values(user).returning();
+      const results = await db.insert(users).values(newUserRecord).returning();
       return results[0];
     } catch (error) {
       console.warn('[AdPlatform DB Note] Using fallback store for createUser');
       memoryStore.users.push(newUserRecord);
       return newUserRecord;
+    }
+  },
+
+  async getAllUsersWithStats(): Promise<(User & { sitesCount: number; slotsCount: number })[]> {
+    try {
+      const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
+      const allSites = await db.select().from(sites);
+      const allSlots = await db.select().from(adSlots);
+
+      return allUsers.map(u => ({
+        ...u,
+        sitesCount: allSites.filter(s => s.userId === u.id).length,
+        slotsCount: allSlots.filter(sl => sl.userId === u.id).length,
+      }));
+    } catch (error) {
+      return memoryStore.users.map(u => ({
+        ...u,
+        sitesCount: memoryStore.sites.filter(s => s.userId === u.id).length,
+        slotsCount: memoryStore.adSlots.filter(sl => sl.userId === u.id).length,
+      }));
+    }
+  },
+
+  async deleteUser(id: string): Promise<boolean> {
+    try {
+      const results = await db.delete(users).where(eq(users.id, id)).returning();
+      return results.length > 0;
+    } catch (error) {
+      const idx = memoryStore.users.findIndex(u => u.id === id);
+      if (idx !== -1) {
+        memoryStore.users.splice(idx, 1);
+        memoryStore.sites = memoryStore.sites.filter(s => s.userId !== id);
+        memoryStore.adSlots = memoryStore.adSlots.filter(s => s.userId !== id);
+        return true;
+      }
+      return false;
     }
   },
 

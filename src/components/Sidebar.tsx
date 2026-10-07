@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, LayoutGrid, Globe, Layers, Eye, FileCode2, Cloud, History, Settings, LogOut, Sun, Moon, Sparkles, Menu, X, ChevronRight } from 'lucide-react';
+import { Shield, LayoutGrid, Globe, Layers, Eye, FileCode2, Activity, Users, History, Settings, LogOut, Sun, Moon, Sparkles, Menu, X, ChevronRight } from 'lucide-react';
 import { User } from '../types';
 import { Language, translations } from '../i18n';
 
@@ -26,6 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const t = translations[lang];
   const [mobileOpen, setMobileOpen] = useState(false);
+  const isAdmin = user?.role === 'admin';
 
   const navItems = [
     { id: 'overview', label: t.dashboard, icon: LayoutGrid },
@@ -33,8 +34,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'slots', label: t.adSlots, icon: Layers },
     { id: 'sandbox', label: t.liveSandbox, icon: Eye, badge: 'Live' },
     { id: 'wordpress', label: t.wordpress, icon: FileCode2 },
-    { id: 'coolify', label: t.coolify, icon: Cloud },
-    { id: 'logs', label: t.auditLogs, icon: History },
+    ...(isAdmin ? [
+      { id: 'users', label: t.usersManagement || 'Users Management', icon: Users },
+      { id: 'traffic', label: t.trafficControl, icon: Activity },
+      { id: 'logs', label: t.auditLogs, icon: History },
+    ] : []),
     { id: 'settings', label: t.settings, icon: Settings },
   ];
 

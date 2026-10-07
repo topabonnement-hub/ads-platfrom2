@@ -27,9 +27,12 @@ export async function runAutoMigrations() {
       id VARCHAR(64) PRIMARY KEY,
       email VARCHAR(255) UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
-      role VARCHAR(32) DEFAULT 'admin' NOT NULL,
+      role VARCHAR(32) DEFAULT 'user' NOT NULL,
+      is_banned BOOLEAN DEFAULT FALSE NOT NULL,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
     );
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE NOT NULL;
 
     -- Sites Table
     CREATE TABLE IF NOT EXISTS sites (

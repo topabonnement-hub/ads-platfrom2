@@ -154,6 +154,60 @@ export const api = {
     return request<{ logs: AuditLog[] }>('/api/audit-logs');
   },
 
+  getTrafficAnalytics: async () => {
+    return request<{
+      traffic: {
+        totalImpressions: number;
+        totalClicks: number;
+        successfulLoginsCount: number;
+        failedLoginAttemptsCount: number;
+        uniqueIpVisitorsCount: number;
+        loginActivity: {
+          id: string;
+          email: string;
+          action: string;
+          status: 'SUCCESS' | 'FAILED';
+          details: string;
+          ip: string;
+          timestamp: string;
+        }[];
+        auditTrail: AuditLog[];
+      };
+    }>('/api/traffic-analytics');
+  },
+
+  // Admin Users Management
+  getAdminUsers: async () => {
+    return request<{ users: User[] }>('/api/admin/users');
+  },
+
+  createAdminUser: async (userData: { email: string; password: string; role?: 'admin' | 'user' }) => {
+    return request<{ user: User }>('/api/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  },
+
+  updateAdminUser: async (id: string, updates: { email?: string; role?: 'admin' | 'user'; password?: string }) => {
+    return request<{ user: User }>(`/api/admin/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  },
+
+  banAdminUser: async (id: string, isBanned: boolean) => {
+    return request<{ message: string; user: User }>(`/api/admin/users/${id}/ban`, {
+      method: 'PUT',
+      body: JSON.stringify({ isBanned }),
+    });
+  },
+
+  deleteAdminUser: async (id: string) => {
+    return request<{ message: string }>(`/api/admin/users/${id}`, {
+      method: 'DELETE',
+    });
+  },
+
   // Public Test Ping
   trackTestImpression: async (slotId: string, siteId: string) => {
     return request('/api/v1/track/impression', {

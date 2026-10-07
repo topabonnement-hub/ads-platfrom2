@@ -5,7 +5,7 @@ import cookieParser from 'cookie-parser';
 import crypto from 'crypto';
 import { dbOps, AdSlot, Site, User, AuditLog } from './src/db/operations.ts';
 import { runAutoMigrations } from './src/db/migrate.ts';
-import { generateToken, hashPassword, comparePassword, requireAuth, AuthRequest } from './server/auth.ts';
+import { generateToken, hashPassword, comparePassword, requireAuth, requireAdmin, AuthRequest } from './server/auth.ts';
 import { createRateLimiter } from './server/rateLimiter.ts';
 
 const app = express();
@@ -334,9 +334,9 @@ app.post('/api/v1/track/click', publicCors, publicTrackLimiter, async (req: Requ
 // AUTHENTICATION APIs
 // ----------------------------------------------------
 
-// Register (Disabled - Only Sign In allowed)
+// Public Register (Disabled - Account creation is managed manually by Admin in Dashboard)
 app.post('/api/auth/register', authRateLimiter, (_req: Request, res: Response) => {
-  return res.status(403).json({ error: 'Public sign up is disabled. Please log in with your admin credentials.' });
+  return res.status(403).json({ error: 'Public sign up is disabled. User accounts are created manually by the administrator in the Admin Dashboard.' });
 });
 
 // Login
@@ -349,19 +349,49 @@ app.post('/api/auth/login', authRateLimiter, async (req: Request, res: Response)
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const ip = getClientIp(req);
     const user = await dbOps.findUserByEmail(cleanEmail);
 
     if (!user) {
+      await dbOps.addAuditLog({
+        id: 'log_' + crypto.randomBytes(6).toString('hex'),
+        userEmail: cleanEmail,
+        action: 'FAILED_LOGIN',
+        details: `Failed login attempt for account "${cleanEmail}" (User not found)`,
+        ip,
+        timestamp: new Date(),
+      });
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    if (user.isBanned) {
+      await dbOps.addAuditLog({
+        id: 'log_' + crypto.randomBytes(6).toString('hex'),
+        userId: user.id,
+        userEmail: user.email,
+        action: 'FAILED_LOGIN',
+        details: `Banned user attempted login: ${cleanEmail}`,
+        ip,
+        timestamp: new Date(),
+      });
+      return res.status(403).json({ error: 'Your account has been banned by an administrator.' });
     }
 
     const isMatch = await comparePassword(password, user.passwordHash);
 
     if (!isMatch) {
+      await dbOps.addAuditLog({
+        id: 'log_' + crypto.randomBytes(6).toString('hex'),
+        userId: user.id,
+        userEmail: user.email,
+        action: 'FAILED_LOGIN',
+        details: `Failed login attempt for account "${cleanEmail}" (Incorrect password)`,
+        ip,
+        timestamp: new Date(),
+      });
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const ip = getClientIp(req);
     await dbOps.addAuditLog({
       id: 'log_' + crypto.randomBytes(6).toString('hex'),
       userId: user.id,
@@ -498,6 +528,231 @@ app.put('/api/auth/profile', requireAuth, async (req: AuthRequest, res: Response
     });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to update profile settings.' });
+  }
+});
+
+// ----------------------------------------------------
+// ADMIN USER MANAGEMENT APIs
+// ----------------------------------------------------
+
+// List All Users (Admin Only)
+app.get('/api/admin/users', requireAuth, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const usersList = await dbOps.getAllUsersWithStats();
+    return res.json({
+      users: usersList.map(u => ({
+        id: u.id,
+        email: u.email,
+        role: u.role,
+        isBanned: u.isBanned || false,
+        createdAt: u.createdAt,
+        sitesCount: u.sitesCount,
+        slotsCount: u.slotsCount,
+      }))
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch users list.' });
+  }
+});
+
+// Create User Account (Admin Only)
+app.post('/api/admin/users', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const { email, password, role } = req.body;
+    if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    if (!isValidEmail(cleanEmail)) {
+      return res.status(400).json({ error: 'Invalid email address.' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+    }
+
+    const existing = await dbOps.findUserByEmail(cleanEmail);
+    if (existing) {
+      return res.status(409).json({ error: 'User email already exists.' });
+    }
+
+    const assignedRole = role === 'admin' ? 'admin' : 'user';
+    const passwordHash = await hashPassword(password);
+    const newUser = await dbOps.createUser({
+      id: 'usr_' + crypto.randomBytes(6).toString('hex'),
+      email: cleanEmail,
+      passwordHash,
+      role: assignedRole,
+      isBanned: false,
+      createdAt: new Date(),
+    });
+
+    const ip = getClientIp(req);
+    await dbOps.addAuditLog({
+      id: 'log_' + crypto.randomBytes(6).toString('hex'),
+      userId: req.user!.id,
+      userEmail: req.user!.email,
+      action: 'ADMIN_USER_CREATED',
+      details: `Admin created user "${newUser.email}" with role "${newUser.role}"`,
+      ip,
+      timestamp: new Date(),
+    });
+
+    return res.status(201).json({
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        role: newUser.role,
+        isBanned: newUser.isBanned,
+        createdAt: newUser.createdAt,
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to create user.' });
+  }
+});
+
+// Edit User Account (Admin Only)
+app.put('/api/admin/users/:id', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const targetUserId = sanitizeString(req.params.id, 64);
+    const { email, role, password } = req.body;
+
+    const targetUser = await dbOps.findUserById(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const updates: Partial<User> = {};
+
+    if (email && typeof email === 'string' && email.trim().toLowerCase() !== targetUser.email) {
+      const cleanEmail = email.trim().toLowerCase();
+      if (!isValidEmail(cleanEmail)) {
+        return res.status(400).json({ error: 'Invalid email address.' });
+      }
+      const existing = await dbOps.findUserByEmail(cleanEmail);
+      if (existing && existing.id !== targetUser.id) {
+        return res.status(409).json({ error: 'Email already in use.' });
+      }
+      updates.email = cleanEmail;
+    }
+
+    if (role && (role === 'admin' || role === 'user')) {
+      updates.role = role;
+    }
+
+    if (password && typeof password === 'string' && password.length >= 6) {
+      updates.passwordHash = await hashPassword(password);
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No updates provided.' });
+    }
+
+    const updated = await dbOps.updateUser(targetUserId, updates);
+    if (!updated) {
+      return res.status(500).json({ error: 'Failed to update user.' });
+    }
+
+    const ip = getClientIp(req);
+    await dbOps.addAuditLog({
+      id: 'log_' + crypto.randomBytes(6).toString('hex'),
+      userId: req.user!.id,
+      userEmail: req.user!.email,
+      action: 'ADMIN_USER_UPDATED',
+      details: `Admin updated user "${updated.email}" (${Object.keys(updates).join(', ')})`,
+      ip,
+      timestamp: new Date(),
+    });
+
+    return res.json({
+      user: {
+        id: updated.id,
+        email: updated.email,
+        role: updated.role,
+        isBanned: updated.isBanned,
+        createdAt: updated.createdAt,
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to update user.' });
+  }
+});
+
+// Ban / Unban User (Admin Only)
+app.put('/api/admin/users/:id/ban', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const targetUserId = sanitizeString(req.params.id, 64);
+    const { isBanned } = req.body;
+
+    if (targetUserId === req.user!.id) {
+      return res.status(400).json({ error: 'You cannot ban your own admin account.' });
+    }
+
+    const targetUser = await dbOps.findUserById(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const updated = await dbOps.updateUser(targetUserId, { isBanned: Boolean(isBanned) });
+    if (!updated) {
+      return res.status(500).json({ error: 'Failed to update ban status.' });
+    }
+
+    const ip = getClientIp(req);
+    await dbOps.addAuditLog({
+      id: 'log_' + crypto.randomBytes(6).toString('hex'),
+      userId: req.user!.id,
+      userEmail: req.user!.email,
+      action: isBanned ? 'ADMIN_USER_BANNED' : 'ADMIN_USER_UNBANNED',
+      details: `Admin ${isBanned ? 'banned' : 'unbanned'} user "${updated.email}"`,
+      ip,
+      timestamp: new Date(),
+    });
+
+    return res.json({
+      message: `User ${isBanned ? 'banned' : 'unbanned'} successfully`,
+      user: { id: updated.id, email: updated.email, role: updated.role, isBanned: updated.isBanned }
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to update user status.' });
+  }
+});
+
+// Delete User Account (Admin Only)
+app.delete('/api/admin/users/:id', requireAuth, requireAdmin, async (req: AuthRequest, res: Response) => {
+  try {
+    const targetUserId = sanitizeString(req.params.id, 64);
+
+    if (targetUserId === req.user!.id) {
+      return res.status(400).json({ error: 'You cannot delete your own admin account.' });
+    }
+
+    const targetUser = await dbOps.findUserById(targetUserId);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const deleted = await dbOps.deleteUser(targetUserId);
+    if (!deleted) {
+      return res.status(500).json({ error: 'Failed to delete user.' });
+    }
+
+    const ip = getClientIp(req);
+    await dbOps.addAuditLog({
+      id: 'log_' + crypto.randomBytes(6).toString('hex'),
+      userId: req.user!.id,
+      userEmail: req.user!.email,
+      action: 'ADMIN_USER_DELETED',
+      details: `Admin deleted user account "${targetUser.email}" and all associated data`,
+      ip,
+      timestamp: new Date(),
+    });
+
+    return res.json({ message: `User ${targetUser.email} deleted successfully.` });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to delete user.' });
   }
 });
 
@@ -820,6 +1075,50 @@ app.get('/api/audit-logs', requireAuth, async (req: AuthRequest, res: Response) 
     return res.json({ logs });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to load audit logs' });
+  }
+});
+
+app.get('/api/traffic-analytics', requireAuth, requireAdmin, async (_req: AuthRequest, res: Response) => {
+  try {
+    const logs = await dbOps.getAuditLogs(undefined); // Fetch all logs for admin
+    const allUsers = await dbOps.getAllUsersWithStats();
+
+    let totalImpressions = 0;
+    let totalClicks = 0;
+
+    for (const u of allUsers) {
+      const uAnalytics = await dbOps.getAnalytics(u.id);
+      totalImpressions += uAnalytics.totalImpressions || 0;
+      totalClicks += uAnalytics.totalClicks || 0;
+    }
+
+    const loginSuccessfulLogs = logs.filter(l => l.action === 'USER_LOGIN');
+    const loginFailedLogs = logs.filter(l => l.action === 'FAILED_LOGIN');
+
+    // Unique IPs count from logs
+    const uniqueIps = new Set(logs.map(l => l.ip).filter(Boolean)).size;
+
+    return res.json({
+      traffic: {
+        totalImpressions,
+        totalClicks,
+        successfulLoginsCount: loginSuccessfulLogs.length,
+        failedLoginAttemptsCount: loginFailedLogs.length,
+        uniqueIpVisitorsCount: Math.max(uniqueIps, 1),
+        loginActivity: logs.filter(l => l.action === 'USER_LOGIN' || l.action === 'FAILED_LOGIN' || l.action === 'USER_REGISTER').map(l => ({
+          id: l.id,
+          email: l.userEmail || 'Unknown',
+          action: l.action,
+          status: l.action === 'USER_LOGIN' || l.action === 'USER_REGISTER' ? 'SUCCESS' : 'FAILED',
+          details: l.details || '',
+          ip: l.ip || '127.0.0.1',
+          timestamp: l.timestamp,
+        })),
+        auditTrail: logs,
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to load traffic analytics' });
   }
 });
 
