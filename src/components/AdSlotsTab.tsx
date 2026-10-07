@@ -358,6 +358,11 @@ export const AdSlotsTab: React.FC<AdSlotsTabProps> = ({
                       <span className="text-slate-400">•</span>
                       <span className="text-slate-500 dark:text-slate-400">{slot.dimensions}</span>
                     </p>
+                    {(slot.ownerEmail || site?.ownerEmail) && (
+                      <p className="text-[11px] text-sky-600 dark:text-sky-400 font-medium mt-1">
+                        Owner: {slot.ownerEmail || site?.ownerEmail}
+                      </p>
+                    )}
                   </div>
 
                   {/* Impressions & Clicks count */}

@@ -16,6 +16,7 @@ export interface AdSlot {
   id: string;
   siteId: string;
   userId: string;
+  ownerEmail?: string;
   name: string;
   type: AdSlotType;
   legacyId?: string;
@@ -31,6 +32,7 @@ export interface AdSlot {
 export interface Site {
   id: string;
   userId: string;
+  ownerEmail?: string;
   name: string;
   domain: string;
   publicKey: string;

@@ -207,6 +207,14 @@ export const dbOps = {
   },
 
   // Sites
+  async getAllSites(): Promise<Site[]> {
+    try {
+      return await db.select().from(sites).orderBy(desc(sites.createdAt));
+    } catch (error) {
+      return memoryStore.sites;
+    }
+  },
+
   async getSitesByUserId(userId: string): Promise<Site[]> {
     try {
       return await db.select().from(sites).where(eq(sites.userId, userId)).orderBy(desc(sites.createdAt));
@@ -253,18 +261,32 @@ export const dbOps = {
     }
   },
 
-  async deleteSite(siteId: string, userId: string): Promise<boolean> {
+  async deleteSite(siteId: string, userId?: string): Promise<boolean> {
     try {
-      const result = await db.delete(sites).where(and(eq(sites.id, siteId), eq(sites.userId, userId))).returning();
-      return result.length > 0;
+      const condition = userId ? and(eq(sites.id, siteId), eq(sites.userId, userId)) : eq(sites.id, siteId);
+      const result = await db.delete(sites).where(condition).returning();
+      if (result.length > 0) {
+        await db.delete(adSlots).where(eq(adSlots.siteId, siteId));
+        return true;
+      }
+      return false;
     } catch (error) {
-      const idx = memoryStore.sites.findIndex(s => s.id === siteId && s.userId === userId);
+      const idx = memoryStore.sites.findIndex(s => s.id === siteId && (!userId || s.userId === userId));
       if (idx !== -1) {
         memoryStore.sites.splice(idx, 1);
         memoryStore.adSlots = memoryStore.adSlots.filter(s => s.siteId !== siteId);
         return true;
       }
       return false;
+    }
+  },
+
+  // Ad Slots
+  async getAllSlots(): Promise<AdSlot[]> {
+    try {
+      return await db.select().from(adSlots).orderBy(desc(adSlots.createdAt));
+    } catch (error) {
+      return memoryStore.adSlots;
     }
   },
 
@@ -360,18 +382,19 @@ export const dbOps = {
     }
   },
 
-  async updateSlot(slotId: string, userId: string, updates: Partial<AdSlot>): Promise<AdSlot | null> {
+  async updateSlot(slotId: string, userId: string | undefined, updates: Partial<AdSlot>): Promise<AdSlot | null> {
     try {
+      const condition = userId ? and(eq(adSlots.id, slotId), eq(adSlots.userId, userId)) : eq(adSlots.id, slotId);
       const results = await db.update(adSlots)
         .set({
           ...updates,
           updatedAt: new Date(),
         })
-        .where(and(eq(adSlots.id, slotId), eq(adSlots.userId, userId)))
+        .where(condition)
         .returning();
       return results[0] || null;
     } catch (error) {
-      const slot = memoryStore.adSlots.find(s => s.id === slotId && s.userId === userId);
+      const slot = memoryStore.adSlots.find(s => s.id === slotId && (!userId || s.userId === userId));
       if (slot) {
         Object.assign(slot, updates, { updatedAt: new Date() });
         return slot;
@@ -380,12 +403,13 @@ export const dbOps = {
     }
   },
 
-  async deleteSlot(slotId: string, userId: string): Promise<boolean> {
+  async deleteSlot(slotId: string, userId?: string): Promise<boolean> {
     try {
-      const results = await db.delete(adSlots).where(and(eq(adSlots.id, slotId), eq(adSlots.userId, userId))).returning();
+      const condition = userId ? and(eq(adSlots.id, slotId), eq(adSlots.userId, userId)) : eq(adSlots.id, slotId);
+      const results = await db.delete(adSlots).where(condition).returning();
       return results.length > 0;
     } catch (error) {
-      const idx = memoryStore.adSlots.findIndex(s => s.id === slotId && s.userId === userId);
+      const idx = memoryStore.adSlots.findIndex(s => s.id === slotId && (!userId || s.userId === userId));
       if (idx !== -1) {
         memoryStore.adSlots.splice(idx, 1);
         return true;
@@ -394,16 +418,16 @@ export const dbOps = {
     }
   },
 
-  async deleteAllSlotsForSite(siteId: string, userId: string): Promise<number> {
+  async deleteAllSlotsForSite(siteId: string, userId?: string): Promise<number> {
     try {
       const site = await this.getSiteById(siteId);
-      if (!site || site.userId !== userId) return 0;
+      if (!site || (userId && site.userId !== userId)) return 0;
 
       const deleted = await db.delete(adSlots).where(eq(adSlots.siteId, siteId)).returning();
       return deleted.length;
     } catch (error) {
       const initialCount = memoryStore.adSlots.length;
-      memoryStore.adSlots = memoryStore.adSlots.filter(s => s.siteId !== siteId || s.userId !== userId);
+      memoryStore.adSlots = memoryStore.adSlots.filter(s => s.siteId !== siteId || (userId && s.userId !== userId));
       return initialCount - memoryStore.adSlots.length;
     }
   },
@@ -468,10 +492,10 @@ export const dbOps = {
   },
 
   // Analytics
-  async getAnalytics(userId: string) {
+  async getAnalytics(userId?: string) {
     try {
-      const userSites = await this.getSitesByUserId(userId);
-      const userSlots = await this.getSlotsByUserId(userId);
+      const userSites = userId ? await this.getSitesByUserId(userId) : await this.getAllSites();
+      const userSlots = userId ? await this.getSlotsByUserId(userId) : await this.getAllSlots();
 
       const totalImpressions = userSlots.reduce((acc, s) => acc + (s.impressionsCount || 0), 0);
       const totalClicks = userSlots.reduce((acc, s) => acc + (s.clicksCount || 0), 0);

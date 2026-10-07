@@ -133,6 +133,11 @@ export const SitesTab: React.FC<SitesTabProps> = ({
                         <Globe className="w-3 h-3 text-slate-400" />
                         <span>{site.domain}</span>
                       </p>
+                      {site.ownerEmail && (
+                        <p className="text-[11px] text-sky-600 dark:text-sky-400 font-medium">
+                          Owner: {site.ownerEmail}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1.5">

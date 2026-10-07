@@ -162,6 +162,33 @@ export const api = {
         successfulLoginsCount: number;
         failedLoginAttemptsCount: number;
         uniqueIpVisitorsCount: number;
+        topCountries: {
+          code: string;
+          name: string;
+          flag: string;
+          visitorsCount: number;
+          percentage: number;
+        }[];
+        topPages: {
+          url: string;
+          views: number;
+          uniqueIps: number;
+        }[];
+        liveFeed: {
+          id: string;
+          email: string;
+          action: string;
+          status: 'SUCCESS' | 'FAILED' | 'WARNING';
+          details: string;
+          ip: string;
+          country: string;
+          countryCode: string;
+          countryFlag: string;
+          city: string;
+          page: string;
+          device: string;
+          timestamp: string;
+        }[];
         loginActivity: {
           id: string;
           email: string;
